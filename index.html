@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>Melanoma Staging & Margins</title>
+  <meta name="theme-color" content="#b91c1c"/>
+  <link rel="manifest" href="./manifest.webmanifest">
+  <link rel="apple-touch-icon" href="./icons/icon-192.png">
+</head>
+<body>
+  <h1>Melanoma Staging & Margins (AJCC 8)</h1>
+  <div>
+    <label>Lesion type <select id="lesionType"><option value="in_situ">Melanoma in situ</option><option value="invasive" selected>Invasive melanoma</option></select></label>
+    <label>Breslow (mm) <input id="breslow" type="number" min="0" step="0.01" value="1.0"></label>
+    <label>Ulceration <select id="ulceration"><option value="no" selected>No</option><option value="yes">Yes</option><option value="unknown">Unknown</option></select></label>
+    <label>Mitotic rate (/mm²) <input id="mitotic" type="number" min="0" step="0.1"></label>
+    <button id="calcBtn">Calculate</button>
+  </div>
+  <div id="out">
+    <div id="stageBox">Stage —</div>
+    <div id="marginBox">Margin —</div>
+    <div id="tcat">T—</div>
+    <div id="tdetail">—</div>
+  </div>
+<script>
+function determineT(mm, ulceration) {
+  if (mm === null || isNaN(mm)) return { t: "TX", detail: "Primary tumor cannot be assessed" };
+  if (mm === 0) return { t: "Tis", detail: "Melanoma in situ" };
+  const ulc = (ulceration === "yes");
+  if (mm <= 1.0) {
+    if (mm < 0.8 && !ulc) return { t: "T1a", detail: "<0.8 mm, no ulceration" };
+    return { t: "T1b", detail: (mm < 0.8 ? "<0.8 mm with ulceration" : "0.8–1.0 mm with/without ulceration") };
+  }
+  if (mm > 1.0 && mm <= 2.0) return { t: (ulc ? "T2b" : "T2a"), detail: ">1.0–2.0 mm" + (ulc ? ", ulcerated" : ", not ulcerated") };
+  if (mm > 2.0 && mm <= 4.0) return { t: (ulc ? "T3b" : "T3a"), detail: ">2.0–4.0 mm" + (ulc ? ", ulcerated" : ", not ulcerated") };
+  if (mm > 4.0) return { t: (ulc ? "T4b" : "T4a"), detail: ">4.0 mm" + (ulc ? ", ulcerated" : ", not ulcerated") };
+  return { t: "TX", detail: "Unavailable" };
+}
+function stageFromT(t, assumeN0M0=true) {
+  if (!assumeN0M0) return { stage: "—", note: "Stage grouping requires N and M." };
+  switch (t) {
+    case "Tis": return { stage: "0", note: "Stage 0 (in situ), N0, M0" };
+    case "T1a": return { stage: "IA", note: "Assuming N0, M0" };
+    case "T1b": return { stage: "IB", note: "Assuming N0, M0" };
+    case "T2a": return { stage: "IB", note: "Assuming N0, M0" };
+    case "T2b": return { stage: "IIA", note: "Assuming N0, M0" };
+    case "T3a": return { stage: "IIA", note: "Assuming N0, M0" };
+    case "T3b": return { stage: "IIB", note: "Assuming N0, M0" };
+    case "T4a": return { stage: "IIB", note: "Assuming N0, M0" };
+    case "T4b": return { stage: "IIC", note: "Assuming N0, M0" };
+    default: return { stage: "—", note: "" };
+  }
+}
+function recommendedMargin(mm, lesionType) {
+  if (lesionType === "in_situ" || (mm !== null && mm === 0)) return "0.5–1.0 cm";
+  if (mm <= 1.0) return "1 cm";
+  if (mm > 1.0 && mm <= 2.0) return "1–2 cm";
+  if (mm > 2.0) return "2 cm";
+  return "—";
+}
+function calculate(){
+  const lesion = document.getElementById("lesionType").value;
+  const ulcer = document.getElementById("ulceration").value;
+  let mm = parseFloat(document.getElementById("breslow").value);
+  if (lesion === "in_situ") mm = 0.0;
+  const tinfo = determineT(mm, ulcer);
+  const sgroup = stageFromT(tinfo.t, true);
+  const margin = recommendedMargin(mm, lesion);
+  document.getElementById("tcat").textContent = tinfo.t;
+  document.getElementById("tdetail").textContent = tinfo.detail;
+  document.getElementById("stageBox").textContent = "Stage " + sgroup.stage;
+  document.getElementById("marginBox").textContent = "Margin: " + margin;
+}
+document.getElementById("calcBtn").addEventListener("click", calculate);
+if ("serviceWorker" in navigator) { window.addEventListener("load",()=>navigator.serviceWorker.register("./sw.js").catch(()=>{})); }
+</script>
+</body>
+</html>
