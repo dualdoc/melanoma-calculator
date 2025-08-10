@@ -7,22 +7,111 @@
   <meta name="theme-color" content="#b91c1c"/>
   <link rel="manifest" href="./manifest.webmanifest">
   <link rel="apple-touch-icon" href="./icons/icon-192.png">
+  <style>
+    :root { --pad: 18px; --radius: 16px; --shadow: 0 10px 30px rgba(0,0,0,.12); --brand:#b91c1c; }
+    * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+    body { margin: 0; background: #0b1220; color: #e5e7eb; font-family: -apple-system, system-ui, Segoe UI, Roboto, Helvetica, Arial; }
+    header { position: sticky; top: 0; z-index: 30; background: #0f172a; color:#e5e7eb; padding: 14px var(--pad); box-shadow: var(--shadow); }
+    h1 { margin: 0; font-size: 1.05rem; letter-spacing: .2px; }
+    main { max-width: 920px; margin: 16px auto 80px; padding: 0 var(--pad); display: grid; gap: 16px; }
+    .card { background: #0f172a; border-radius: var(--radius); padding: calc(var(--pad) * 1.0); box-shadow: var(--shadow); }
+    .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px,1fr)); gap: 14px; }
+    .field { display:flex; flex-direction:column; gap:8px; }
+    label { font-weight: 700; font-size: .96rem; color:#cbd5e1; }
+    .control { display:flex; align-items:center; background:#0b1220; border:1px solid #1f2937; border-radius:12px; padding: 12px 12px; }
+    select, input[type="number"] { appearance:none; border:0; background:transparent; color:#e5e7eb; font-size:1.06rem; width:100%; outline:none; }
+    .suffix { color:#94a3b8; font-weight:700; margin-left:6px; }
+    .row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+    .switch { display:flex; gap:10px; align-items:center; background:#0b1220; border:1px solid #1f2937; padding:10px 12px; border-radius:999px; }
+    .btn { appearance: none; border: 0; border-radius: 14px; padding: 14px 18px; font-weight: 900; font-size: 1.05rem; background: var(--brand); color: white; cursor: pointer; box-shadow: var(--shadow); }
+    .results { position: sticky; bottom: 0; z-index: 25; }
+    .results .card { border-radius: 18px 18px 0 0; }
+    .redbox { background: var(--brand); color: white; padding: 16px; border-radius: 14px; font-weight: 900; font-size: 1.7rem; text-align: center; letter-spacing:.3px; }
+    .pill { display: inline-block; padding: 6px 10px; border-radius: 999px; background: #111827; color: #c7d2fe; font-weight: 800; font-size: 1rem; border:1px solid #1f2937; }
+    .muted { color: #94a3b8; font-size: .95rem; }
+    .hr { height: 1px; background: #1f2937; margin: 10px 0; }
+    .note { font-size: .96rem; color: #cbd5e1; }
+    .kicker { font-size:.85rem; color:#94a3b8; margin-top:6px; }
+    footer { text-align:center; color:#64748b; padding:20px var(--pad) 40px; font-size:.9rem; }
+  </style>
 </head>
 <body>
-  <h1>Melanoma Staging & Margins (AJCC 8)</h1>
-  <div>
-    <label>Lesion type <select id="lesionType"><option value="in_situ">Melanoma in situ</option><option value="invasive" selected>Invasive melanoma</option></select></label>
-    <label>Breslow (mm) <input id="breslow" type="number" min="0" step="0.01" value="1.0"></label>
-    <label>Ulceration <select id="ulceration"><option value="no" selected>No</option><option value="yes">Yes</option><option value="unknown">Unknown</option></select></label>
-    <label>Mitotic rate (/mm²) <input id="mitotic" type="number" min="0" step="0.1"></label>
-    <button id="calcBtn">Calculate</button>
-  </div>
-  <div id="out">
-    <div id="stageBox">Stage —</div>
-    <div id="marginBox">Margin —</div>
-    <div id="tcat">T—</div>
-    <div id="tdetail">—</div>
-  </div>
+  <header><h1>Melanoma Staging & Margins (AJCC 8)</h1></header>
+  <main>
+    <section class="card">
+      <div class="grid">
+        <div class="field">
+          <label for="lesionType">Lesion type</label>
+          <div class="control">
+            <select id="lesionType">
+              <option value="in_situ">Melanoma in situ</option>
+              <option value="invasive" selected>Invasive melanoma</option>
+            </select>
+          </div>
+        </div>
+        <div class="field">
+          <label for="breslow">Breslow thickness</label>
+          <div class="control">
+            <input id="breslow" type="number" min="0" step="0.01" value="1.00" inputmode="decimal" />
+            <span class="suffix">mm</span>
+          </div>
+          <div class="kicker">Enter 0 for in situ.</div>
+        </div>
+        <div class="field">
+          <label for="ulceration">Ulceration</label>
+          <div class="control">
+            <select id="ulceration">
+              <option value="no" selected>No</option>
+              <option value="yes">Yes</option>
+              <option value="unknown">Unknown</option>
+            </select>
+          </div>
+        </div>
+        <div class="field">
+          <label for="mitotic">Mitotic rate</label>
+          <div class="control">
+            <input id="mitotic" type="number" min="0" step="0.1" inputmode="decimal" placeholder="Optional" />
+            <span class="suffix">/mm²</span>
+          </div>
+          <div class="kicker">Prognostic; not used for AJCC 8 T-category.</div>
+        </div>
+      </div>
+      <div class="hr"></div>
+      <div class="row">
+        <label class="switch"><input id="assumeN0M0" type="checkbox" checked /> <span>Assume N0, M0 for stage grouping</span></label>
+        <label class="switch"><input id="showSLNB" type="checkbox" /> <span>Show SLNB considerations</span></label>
+        <button id="calcBtn" class="btn">Calculate</button>
+      </div>
+      <div id="err" class="kicker" style="display:none; color:#fca5a5;">Please enter a valid Breslow thickness (mm ≥ 0).</div>
+    </section>
+
+    <section class="results">
+      <div class="card">
+        <div class="grid">
+          <div class="redbox" id="stageBox">Stage —</div>
+          <div class="redbox" id="marginBox">Margin —</div>
+        </div>
+        <div class="hr"></div>
+        <div class="grid">
+          <div>
+            <div class="muted">Tumor (T) stage — AJCC 8th</div>
+            <div class="pill" id="tcat">T—</div>
+            <div class="muted" id="tdetail">—</div>
+          </div>
+          <div>
+            <div class="muted">Inputs</div>
+            <div id="inputsEcho" class="note">—</div>
+          </div>
+          <div id="slnbBox" style="display:none;">
+            <div class="muted"><strong>SLNB considerations</strong></div>
+            <div id="slnbText" class="note"></div>
+          </div>
+        </div>
+      </div>
+    </section>
+    <footer>© 2025 • Educational tool.</footer>
+  </main>
+
 <script>
 function determineT(mm, ulceration) {
   if (mm === null || isNaN(mm)) return { t: "TX", detail: "Primary tumor cannot be assessed" };
@@ -59,21 +148,39 @@ function recommendedMargin(mm, lesionType) {
   if (mm > 2.0) return "2 cm";
   return "—";
 }
+function slnbConsiderations(mm, ulceration, mitotic) {
+  const ulc = (ulceration === "yes");
+  let advice = [];
+  if (mm > 0.8) advice.push("Discuss SLNB (>0.8 mm).");
+  if ((mm >= 0.8 && mm <= 1.0) || (mm < 0.8 && ulc)) advice.push("Consider SLNB (0.8–1.0 mm or <0.8 mm with ulceration).");
+  if (mm < 0.8 && !ulc) advice.push("Generally not recommended for T1a unless other adverse features.");
+  if (!isNaN(mitotic) && mitotic >= 1) advice.push("Higher mitotic rate strengthens consideration in thin lesions.");
+  return advice.join(" ");
+}
 function calculate(){
   const lesion = document.getElementById("lesionType").value;
   const ulcer = document.getElementById("ulceration").value;
+  const mitotic = parseFloat(document.getElementById("mitotic").value);
   let mm = parseFloat(document.getElementById("breslow").value);
   if (lesion === "in_situ") mm = 0.0;
+  if (isNaN(mm) || mm < 0) { document.getElementById("err").style.display = "block"; return; }
+  else { document.getElementById("err").style.display = "none"; }
   const tinfo = determineT(mm, ulcer);
-  const sgroup = stageFromT(tinfo.t, true);
+  const assume = document.getElementById("assumeN0M0").checked;
+  const sgroup = stageFromT(tinfo.t, assume);
   const margin = recommendedMargin(mm, lesion);
   document.getElementById("tcat").textContent = tinfo.t;
   document.getElementById("tdetail").textContent = tinfo.detail;
   document.getElementById("stageBox").textContent = "Stage " + sgroup.stage;
   document.getElementById("marginBox").textContent = "Margin: " + margin;
+  document.getElementById("inputsEcho").innerHTML = `Breslow: <strong>${isNaN(mm)?"—":mm.toFixed(2)}</strong> mm • Ulceration: <strong>${ulcer}</strong> • Mitotic rate: <strong>${isNaN(mitotic)?"—":mitotic + " / mm²"}</strong>`;
+  const showSLNB = document.getElementById("showSLNB").checked;
+  const sl = document.getElementById("slnbBox");
+  if (showSLNB) { sl.style.display = "block"; document.getElementById("slnbText").textContent = slnbConsiderations(mm, ulcer, mitotic); }
+  else { sl.style.display = "none"; }
 }
 document.getElementById("calcBtn").addEventListener("click", calculate);
-if ("serviceWorker" in navigator) { window.addEventListener("load",()=>navigator.serviceWorker.register("./sw.js").catch(()=>{})); }
+if ("serviceWorker" in navigator) { window.addEventListener("load", () => { navigator.serviceWorker.register("./sw.js").catch(()=>{}); }); }
 </script>
 </body>
 </html>
